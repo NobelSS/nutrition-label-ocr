@@ -1,5 +1,7 @@
 from object_detection import detect_object
+from deskew import deskew
 
-image_path = "./dataset/real/20250510_182941.jpg"
+image_path = "./dataset/real/20250510_181112 - Copy.jpg"
 
-detect_object(image_path)
+cropped_image = detect_object(image_path)
+deskewed_image = deskew(cropped_image)

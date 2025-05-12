@@ -2,3 +2,4 @@ inference-sdk
 pillow
 matplotlib
 python-dotenv
+scikit-image

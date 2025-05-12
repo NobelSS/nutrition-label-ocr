@@ -1,6 +1,10 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
 dataset
 .env
 venv
-__pycache__/
 
 !.env.example
+

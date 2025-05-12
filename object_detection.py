@@ -3,7 +3,8 @@ from inference_sdk import InferenceHTTPClient
 from PIL import Image, ImageOps
 import matplotlib.pyplot as plt
 from dotenv import load_dotenv
-
+import numpy as np
+import cv2
 
 load_dotenv()
 
@@ -46,4 +47,7 @@ def detect_object(image_path: str, model_id: str = 'nutrition-label-table/3'):
     plt.axis("off")
     plt.show()
     
-    return cropped_display
+    cropped_np = np.array(cropped_display)
+    cropped_bgr = cv2.cvtColor(cropped_np, cv2.COLOR_RGB2BGR)
+    
+    return cropped_bgr
