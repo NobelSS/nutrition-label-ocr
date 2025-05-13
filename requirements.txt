@@ -3,3 +3,4 @@ pillow
 matplotlib
 python-dotenv
 scikit-image
+pytesseract

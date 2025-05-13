@@ -18,14 +18,14 @@ CLIENT = InferenceHTTPClient(
 )
 
 
-def detect_object(image_path: str, model_id: str = 'nutrition-label-table/3'):
+def detect_object(image_path: str, show_result: bool = True, model_id: str = 'nutrition-label-table/3'):
     image = Image.open(image_path)
 
     result = CLIENT.infer(image_path, model_id=model_id)
 
     if not result["predictions"]:
-            print("No predictions found.")
-            return None
+        print("No predictions found.")
+        return None
 
     top_pred = max(result["predictions"], key=lambda x: x["confidence"])
 
@@ -42,11 +42,13 @@ def detect_object(image_path: str, model_id: str = 'nutrition-label-table/3'):
     cropped = image.crop((left, top, right, bottom))
     cropped_display = ImageOps.exif_transpose(cropped) # Fix orientation for image with EXIF tag
 
-    plt.figure()
-    plt.imshow(cropped_display)
-    plt.axis("off")
-    plt.show()
+    if show_result:
+        plt.figure()
+        plt.imshow(cropped_display)
+        plt.axis("off")
+        plt.show()
     
+    print('Cropping nutrition label...')
     cropped_np = np.array(cropped_display)
     cropped_bgr = cv2.cvtColor(cropped_np, cv2.COLOR_RGB2BGR)
     

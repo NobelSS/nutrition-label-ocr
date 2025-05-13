@@ -16,6 +16,8 @@ def deskew(image: np.ndarray, show_result: bool = True):
         return np.sum(img, axis=1)
 
     def find_best_rotation(binary_img, delta=0.5, limit=10):
+        print("Finding the best rotation angle...")
+        
         best_score = -np.inf
         best_angle = 0
         for angle in np.arange(-limit, limit + delta, delta):
@@ -29,7 +31,7 @@ def deskew(image: np.ndarray, show_result: bool = True):
 
     angle = find_best_rotation(binary)
 
-    corrected = rotate(image, angle, resize=True)
+    deskewed = rotate(image, angle, resize=True)
 
     # Display results
     if show_result:
@@ -40,10 +42,10 @@ def deskew(image: np.ndarray, show_result: bool = True):
         plt.axis("off")
 
         plt.subplot(1, 2, 2)
-        plt.imshow(corrected, cmap='gray')
+        plt.imshow(deskewed, cmap='gray')
         plt.title(f"Deskewed Image (Angle: {angle:.2f}°)")
         plt.axis("off")
         plt.tight_layout()
         plt.show()
     
-    return corrected
+    return deskewed
