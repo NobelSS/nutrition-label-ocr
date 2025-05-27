@@ -20,13 +20,14 @@ def get_model(num_classes: int = 2, model_path: str = "./model/best_model.pth"):
 
     return device, model
 
-def detect_object(image_path: str, show_result: bool = True):
+def detect_object(image_path: str, show_result: bool = False, draw_boxes: bool = False):
 
     device, model = get_model(num_classes=2, model_path="./model/best_model.pth")
 
     image = cv2.imread(image_path)
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    resized_image = cv2.resize(gray_image, (640, 640))
+    # resized_image = cv2.resize(gray_image, (640, 640))
+    resized_image = gray_image
     rgb_image = cv2.cvtColor(resized_image, cv2.COLOR_GRAY2RGB)
 
     pil_image = Image.fromarray(rgb_image)
@@ -37,13 +38,23 @@ def detect_object(image_path: str, show_result: bool = True):
 
     boxes = prediction["boxes"]
     scores = prediction["scores"]
-
+    
+    result_image = cv2.cvtColor(resized_image.copy(), cv2.COLOR_GRAY2BGR)
     cropped_result = None
+
     for box, score in zip(boxes, scores):
         if score < 0.5:
             continue
         xmin, ymin, xmax, ymax = box.int().cpu().numpy()
         cropped_result = resized_image[ymin:ymax, xmin:xmax]
+        
+        if draw_boxes:
+            cv2.rectangle(result_image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+            cv2.putText(result_image, f"{score:.2f}", (xmin, ymin - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            plt.imshow(result_image, cmap="gray")
+            plt.show()
+
 
         if show_result is True and cropped_result is not None:
             plt.imshow(cropped_result, cmap="gray")
@@ -56,4 +67,4 @@ def detect_object(image_path: str, show_result: bool = True):
     if cropped_result is not None:
         return cv2.cvtColor(cropped_result, cv2.COLOR_GRAY2BGR)
     
-    return None
+    return cropped_result

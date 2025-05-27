@@ -5,6 +5,7 @@ __pycache__/
 dataset
 .env
 venv
+model
 
 !.env.example
 

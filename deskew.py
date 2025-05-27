@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage.transform import rotate
 
-def deskew(image: np.ndarray, show_result: bool = True):
+def deskew(image: np.ndarray, show_result: bool = False):
     
     if len(image.shape) == 3 and image.shape[2] == 3:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
