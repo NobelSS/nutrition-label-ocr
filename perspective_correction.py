@@ -31,8 +31,9 @@ def perspective_correction(image: np.ndarray, show_result: bool = False, debug: 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
         gray = image.copy()
-            
-    print("Finding Contours and performing Perspective Correction...")
+        
+    if debug:
+        print("Finding Contours and performing Perspective Correction...")
     
     equalized = cv2.equalizeHist(gray)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)).apply(gray)
@@ -62,8 +63,8 @@ def perspective_correction(image: np.ndarray, show_result: bool = False, debug: 
 
     contours, _ = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    contour_display = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-    cv2.drawContours(contour_display, contours, -1, (255, 0, 0), 2)
+    # contour_display = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    # cv2.drawContours(contour_display, contours, -1, (255, 0, 0), 2)
 
     min_contour_area_threshold = 5000
     epsilon_factor = 0.02
@@ -81,50 +82,30 @@ def perspective_correction(image: np.ndarray, show_result: bool = False, debug: 
   
         if debug:
     
-            cv2.drawContours(contour_display, [main_contour], -1, (0, 0, 255), 3)
-            
+            main_highlight = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+            cv2.drawContours(main_highlight, contours, -1, (255, 0, 0), 2) # Blue
+            cv2.drawContours(main_highlight, [main_contour], -1, (0, 0, 255), 3) # Red
+    
+            debug_images = [
+                {"title": "All Contours (blue) + Main (red)", "image": cv2.cvtColor(main_highlight, cv2.COLOR_BGR2RGB)},
+                # {"title": "Sobel", "image": gradient, "cmap": "gray"},
+                {"title": "CLAHE", "image": clahe, "cmap": "gray"},
+                {"title": "Blur", "image": blur, "cmap": "gray"},
+                {"title": "Canny", "image": canny, "cmap": "gray"},
+                # {"title": "Equalized", "image": equalized, "cmap": "gray"},
+                {"title": "Closed", "image": closed, "cmap": "gray"},
+                {"title": "Dilation", "image": dilation, "cmap": "gray"},
+            ]
+
             plt.figure(figsize=(16, 9))
-            plt.subplot(2, 4, 1)
-            plt.title("All Contours (blue) with Largest Contour Highlighted (red)")
-            plt.imshow(cv2.cvtColor(contour_display, cv2.COLOR_BGR2RGB))
-            plt.axis("off")
-            
-            plt.subplot(2, 4, 2)
-            plt.title("Sobel")
-            plt.imshow(gradient, cmap='gray')
-            plt.axis("off")
-            
-            plt.subplot(2, 4, 3)
-            plt.title("Canny")
-            plt.imshow(canny, cmap='gray')
-            plt.axis("off")
-            
-            plt.subplot(2, 4, 4)
-            plt.title("Blur")
-            plt.imshow(blur, cmap='gray')
-            plt.axis("off")
-            
-            plt.subplot(2, 4, 5)
-            plt.title("Equalized")
-            plt.imshow(equalized, cmap='gray')
-            plt.axis("off")
-            
-            plt.subplot(2, 4, 6)
-            plt.title("CLAHE")
-            plt.imshow(clahe, cmap='gray')
-            plt.axis("off")
-            
-            plt.subplot(2, 4, 7)
-            plt.title("Closed")
-            plt.imshow(closed, cmap='gray')
-            plt.axis("off")
-            
-            plt.subplot(2, 4, 8)
-            plt.title("Dilation")
-            plt.imshow(dilation, cmap='gray')
-            plt.axis("off")
-            
+            for idx, item in enumerate(debug_images):
+                plt.subplot(2, 3, idx + 1)
+                plt.title(item["title"])
+                cmap = item.get("cmap", None)
+                plt.imshow(item["image"], cmap=cmap)
+                plt.axis("off")
             plt.tight_layout()
+            plt.savefig("debug_perspective_correction.png", dpi=300, bbox_inches='tight')
             plt.show()
           
         peri = cv2.arcLength(main_contour, True)
@@ -189,7 +170,10 @@ def perspective_correction(image: np.ndarray, show_result: bool = False, debug: 
             plt.text(0.5, 0.5, 'Correction Failed', horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
             plt.imshow(np.zeros_like(gray), cmap='gray') # Show a blank image if no correction
 
+        plt.axis('off')
         plt.tight_layout()
+        plt.savefig("perspective_correction_output.png", dpi=300, bbox_inches='tight')
         plt.show()
+
         
     return corrected_image

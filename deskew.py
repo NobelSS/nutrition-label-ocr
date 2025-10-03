@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage.transform import rotate
 
-def deskew(image: np.ndarray, show_result: bool = False):
+def deskew(image: np.ndarray, show_result: bool = False, debug: bool = False):
     
     if len(image.shape) == 3 and image.shape[2] == 3:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -15,8 +15,9 @@ def deskew(image: np.ndarray, show_result: bool = False):
     def compute_projection_profile(img):
         return np.sum(img, axis=1)
 
-    def find_best_rotation(binary_img, delta=0.5, limit=10):
-        print("Finding the best rotation angle...")
+    def find_best_rotation(binary_img, delta=0.5, limit=10, debug=False):
+        if debug:
+            print("Finding the best rotation angle...")
         
         best_score = -np.inf
         best_angle = 0
@@ -29,7 +30,7 @@ def deskew(image: np.ndarray, show_result: bool = False):
                 best_angle = angle
         return best_angle
 
-    angle = find_best_rotation(binary)
+    angle = find_best_rotation(binary, debug=debug)
 
     deskewed = rotate(image, angle, resize=True)
 
@@ -46,6 +47,9 @@ def deskew(image: np.ndarray, show_result: bool = False):
         plt.title(f"Deskewed Image (Angle: {angle:.2f}°)")
         plt.axis("off")
         plt.tight_layout()
+        plt.savefig("debug_deskew.png", dpi=300, bbox_inches='tight')
         plt.show()
+        
+
     
     return deskewed

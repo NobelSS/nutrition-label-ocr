@@ -5,3 +5,4 @@ python-dotenv
 scikit-image
 pytesseract
 torchvision
+paddleocr
