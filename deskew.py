@@ -31,6 +31,8 @@ def deskew(image: np.ndarray, show_result: bool = False, debug: bool = False):
         return best_angle
 
     angle = find_best_rotation(binary, debug=debug)
+    if abs(angle) < 1:
+        angle = 0
 
     deskewed = rotate(image, angle, resize=True)
 

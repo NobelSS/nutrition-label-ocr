@@ -1,6 +1,7 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+from tqdm import tqdm
 from object_detection import detect_object
 from deskew import deskew
 from perspective_correction import perspective_correction
@@ -13,7 +14,7 @@ import jiwer
 import Levenshtein
 import argparse
 import matplotlib.pyplot as plt
-from evaluation import parse_nutrition_text, evaluate
+from evaluation import parse_nutrition_text, evaluate, evaluate_metric, export_to_csv
 
 def normalize_text(data):
     if isinstance(data, dict):
@@ -45,7 +46,7 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', ocr_lang: str =
 
     scanner = NutritionLabelScanner()
     corners, image = scanner.detect_label(image=cropped, canny_low=30, canny_high=100,
-                        min_area_ratio=0.1, show_steps=True)
+                        min_area_ratio=0.1, show_steps=False)
     
     if corners is not None:
         image = scanner.rectify_label(enhance=False)
@@ -53,7 +54,7 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', ocr_lang: str =
         image = cropped
     
     image = deskew(image, show_result=False, debug=False)
-    image = preprocess(image, debug=False)
+    image = preprocess(image, save_result=False, debug=False)
 
     # compare_preprocessing_variants(deskewed)
     ocr_text = perform_ocr(image, engine=ocr_engine, lang=ocr_lang)
@@ -72,8 +73,8 @@ def parse_arguments():
                        help='Path to dataset directory (default: dataset/labeled)')
     parser.add_argument('--label-path', default='dataset/label.json',
                        help='Path to label file (default: dataset/label.json)')
-    parser.add_argument('--max-images', type=int, default=2,
-                       help='Maximum number of images to process (default: 2)')
+    parser.add_argument('--max-images', type=int, default=50,
+                       help='Maximum number of images to process (default: 50)')
     parser.add_argument('--single-image', type=str,
                        help='Process a single image file instead of dataset')
 
@@ -113,6 +114,8 @@ if __name__ == '__main__':
             print(f'Parsed Output:\n{parsed_output}')
             evaluation_report = evaluate(parsed_output, label.get(os.path.basename(args.single_image), {}))
             print(f'Evaluation Report:\n{json.dumps(evaluation_report, indent=2)}')
+            metric_report = evaluate_metric(parsed_output, label.get(os.path.basename(args.single_image), {}))
+            print(f'Metric Report:\n{json.dumps(metric_report, indent=2)}')
         else:
             print("OCR failed or no object detected.")
         exit(0)
@@ -124,31 +127,27 @@ if __name__ == '__main__':
         print(f"Error: Dataset path '{DATASET_PATH}' not found.")
         exit(1)
 
-    for idx, image in enumerate(os.listdir(DATASET_PATH)):
+    evaluation = {}
 
-        print(f'Processing image: {image}')
+    for idx, image in enumerate(tqdm(os.listdir(DATASET_PATH), desc="Processing images")):
         output = run_pipeline(os.path.join(DATASET_PATH, image), args.ocr_engine, args.ocr_lang)
         gt = label.get(image, "N/A")
+        print(f"\nProcessing: {image}")
 
         if output is not None:
-            gt_text = normalize_text(gt)
-            out_text = parse_nutrition_text(output)
-
-            # print(f'Ground Truth: {gt_text}, OCR Output: {out_text}')
-            print(f'output: {out_text}\n\n')
-
-            # --- CER per image ---
-            char_errs = Levenshtein.distance(gt_text, out_text)
-            cer = char_errs / len(gt_text) * 100 if len(gt_text) > 0 else 0
-
-            # --- WER per image ---
-            wer = jiwer.wer(gt_text, out_text) * 100
-
-            print(f'CER: {cer:.2f}%, WER: {wer:.2f}%\n')
+            parsed_output = parse_nutrition_text(output)
+            metric_report = evaluate_metric(parsed_output, gt)
+            evaluation[image] = metric_report
         else:
-            print("No ground truth available for this image.\n")
+            print("No object detected on cropping.\n")
+
         if idx >= args.max_images - 1:
             break
+
+    if len(evaluation) > 0:
+        export_to_csv(evaluation, 'evaluation_report.csv')
+        print("Evaluation report exported to 'evaluation_report.csv'")
+
 
 
         

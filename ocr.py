@@ -16,7 +16,6 @@ from paddleocr import PaddleOCR
 
 
 def use_tesseract(image: np.ndarray):
-    print("Performing OCR using Tesseract...")
     pil_image = Image.fromarray(image)
 
     custom_config = r'--oem 3 --psm 6'  # OEM 3: Default, PSM 6: Assume a uniform block of text
@@ -26,8 +25,6 @@ def use_tesseract(image: np.ndarray):
     return text
 
 def use_paddleocr(image: np.ndarray, lang='en'):
-
-    print("Performing OCR using PaddleOCR...")
 
     # Initialize PaddleOCR with reduced verbosity
     ocr = PaddleOCR(
@@ -73,5 +70,6 @@ def perform_ocr(image: np.ndarray, engine='tesseract', **kwargs):
         return use_paddleocr(image, lang=lang)
     else:
         raise ValueError(f"Unsupported OCR engine: {engine}. Supported engines: 'tesseract', 'paddleocr'")
+
 
 
