@@ -145,8 +145,9 @@ if __name__ == '__main__':
             break
 
     if len(evaluation) > 0:
-        export_to_csv(evaluation, 'evaluation_report.csv')
-        print("Evaluation report exported to 'evaluation_report.csv'")
+        evaluation_csv = 'evaluation_report_sharp_mask.csv'
+        export_to_csv(evaluation, evaluation_csv)
+        print(f"Evaluation report exported to {evaluation_csv}")
 
 
 
