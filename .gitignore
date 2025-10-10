@@ -6,6 +6,7 @@ dataset
 .env
 venv
 model
+output/
 
 !.env.example
 

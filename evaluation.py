@@ -10,17 +10,27 @@ def clean_ocr_units(text):
     - S → 5
     Only when immediately followed by a unit like g, mg, kkal, ml, etc.
     """
-    
+    if not isinstance(text, str):
+        if hasattr(text, "text"):
+            text = text.text
+        elif isinstance(text, list):
+            text = " ".join(
+                t[1][0] if isinstance(t, list) and len(t) > 1 else str(t)
+                for t in text
+            )
+        else:
+            text = str(text)
+
     text = re.sub(rf'\b[Oo](?=({ALL_UNITS_PATTERN}))', '0', text)
     text = re.sub(rf'\bl(?=({ALL_UNITS_PATTERN}))', '1', text)
     text = re.sub(rf'\bS(?=({ALL_UNITS_PATTERN}))', '5', text)
-    
-    # Remove extra symbols and normalize spaces
+
     text = re.sub(r'\([^)]*\)', ' ', text)
     text = re.sub(r'[^\w\s\.\-%]', ' ', text)
     text = re.sub(r'\s+', ' ', text)
-    
+
     return text.strip()
+
 
 def parse_nutrition_text(text):
     result = {}
