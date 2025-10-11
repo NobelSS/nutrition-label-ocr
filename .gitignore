@@ -10,3 +10,5 @@ output/
 
 !.env.example
 
+*.png
+*.csv

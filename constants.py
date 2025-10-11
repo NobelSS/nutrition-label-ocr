@@ -1,27 +1,57 @@
 import re
 
 FIELDS = [
+    # --- Serving Information ---
     ("serving_size", ["takaran saji", "serving size"], ["g", "ml"]),
     ("number_of_servings", ["sajian per kemasan", "servings per container"], []),
+
+    # --- Energy ---
     ("energy_total", ["energi total", "total energy", "kalori"], ["kkal", "kcal"]),
     ("energy_from_fat", ["energi dari lemak", "calories from fat"], ["kkal", "kcal"]),
     ("energy_from_fat_saturated", ["energi dari lemak jenuh", "calories from saturated fat"], ["kkal", "kcal"]),
+
+    # --- Fat ---
     ("fat_total", ["lemak total", "total fat"], ["g"]),
     ("fat_saturated", ["lemak jenuh", "saturated fat"], ["g"]),
     ("fat_trans", ["lemak trans", "trans fat"], ["g"]),
+    ("cholesterol", ["kolestrol", "cholesterol"], ["mg"]),
+
+    # --- Protein & Carbs ---
     ("protein", ["protein"], ["g"]),
     ("carbohydrate_total", ["karbohidrat total", "total carbohydrate", "karbohidrat"], ["g"]),
     ("sugar", ["gula", "sugar", "sugars"], ["g"]),
-    ("dietary_fiber", ["serat pangan", "dietary fiber", "fiber"], ["g"]),
-    ("sodium", ["garam", "natrium", "salt", "sodium"], ["mg"]),
-    ("iron", ["zat besi"], ["mg"]),
-    ("zinc", ["seng"], ["mg"]),
     ("sucrose", ["sukrosa"], ["g"]),
     ("lactose", ["laktosa"], ["g"]),
+    ("dietary_fiber", ["serat pangan", "dietary fiber", "fiber"], ["g"]),
+
+    # --- Minerals ---
+    ("sodium", ["garam", "natrium", "salt", "sodium"], ["mg"]),
     ("potassium", ["kalium"], ["mg"]),
     ("calcium", ["kalsium"], ["mg"]),
-    ("cholesterol", ["kolestrol", "cholesterol"], ["mg"])
+    ("iron", ["zat besi", "besi", "iron"], ["mg"]),
+    ("zinc", ["seng", "zinc"], ["mg"]),
+    ("magnesium", ["magnesium"], ["mg"]),
+    ("phosphorus", ["fosfor", "phosphorus", "phosphor"], ["mg"]),
+    ("iodine", ["yodium", "iodium", "iodine"], ["mcg", "µg"]),
+    ("selenium", ["selenium"], ["mcg", "µg"]),
+    ("chromium", ["kromium", "chromium"], ["mcg", "µg"]),
+
+    # --- Vitamins ---
+    ("vitamin_a", ["vitamin a"], ["mcg", "µg", "IU"]),
+    ("vitamin_b1", ["vitamin b1", "tiamin", "thiamine"], ["mg"]),
+    ("vitamin_b2", ["vitamin b2", "riboflavin"], ["mg"]),
+    ("vitamin_b3", ["vitamin b3", "niasin", "niacin"], ["mcg", "mg"]),
+    ("vitamin_b5", ["vitamin b5", "asam pantotenat", "pantothenic acid"], ["mg"]),
+    ("vitamin_b6", ["vitamin b6", "piridoksin", "pyridoxine"], ["mg"]),
+    ("vitamin_b7", ["vitamin b7", "biotin"], ["mcg"]),
+    ("vitamin_b12", ["vitamin b12", "kobalamin", "cobalamin"], ["mcg", "µg"]),
+    ("vitamin_c", ["vitamin c", "asam askorbat", "ascorbic acid"], ["mg"]),
+    ("vitamin_d", ["vitamin d"], ["mcg", "µg", "IU"]),
+    ("vitamin_d3", ["vitamin d3"], ["mcg", "µg", "IU"]),
+    ("vitamin_e", ["vitamin e"], ["mg", "IU"]),
+    ("folic_acid", ["asam folat", "folic acid", "vitamin b9"], ["mcg", "µg"]),
 ]
+
 
 NUMBER_BEFORE_LABEL_FIELDS = {"number_of_servings"}
 

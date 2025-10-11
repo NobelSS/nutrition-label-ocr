@@ -3,7 +3,7 @@ import cv2
 import matplotlib.pyplot as plt
 from skimage.filters import threshold_sauvola
 
-def preprocess(image: np.ndarray, save_result: bool = True, output_path: str = "output_image.png", debug: bool = False):
+def preprocess(image: np.ndarray, save_result: bool = True, save_path: str = "output_image.png", debug: bool = False):
 
     if debug:
         print('Preprocessing image...')
@@ -21,44 +21,31 @@ def preprocess(image: np.ndarray, save_result: bool = True, output_path: str = "
     sauvola = threshold_sauvola(gray, window_size=25)
     binary_sauvola = (gray > sauvola).astype(np.uint8) * 255
     binary_sauvola = cv2.bitwise_not(binary_sauvola)
-    if debug:
-
-        contrast = enhance_contrast(gray) # Not used
+    
+    if debug or save_result:
+        
+        contrast = enhance_contrast(gray)
         equalized = histogram_equalization(gray)
         denoised = denoise(equalized)
         adapt_thresh = adaptive_threshold(denoised)
         morphological_img = morphological(thresh, kernel_size=2)
-    
-        # sharpened_kernel = sharpen_kernel(gray)
-        # sharpened_mask = sharpen_mask(gray)
-        
-        # thresh_sharpened_mask = binarize(sharpened_mask)
-        # thresh_sharpened_kernel = binarize(sharpened_kernel)
-        
-        # sauvola = threshold_sauvola(gray, window_size=25)
-        # binary_sauvola = (gray > sauvola).astype(np.uint8) * 255
-        # binary_sauvola = cv2.bitwise_not(binary_sauvola)
-        
-        plt.figure(figsize=(16, 10))
-        plt.subplot(351), plt.imshow(image, cmap='gray'), plt.title('Deskewed'), plt.axis('off')
-        plt.subplot(352), plt.imshow(contrast, cmap='gray'), plt.title('CLAHE'), plt.axis('off')
-        plt.subplot(353), plt.imshow(equalized, cmap='gray'), plt.title('Equalized'), plt.axis('off')
-        plt.subplot(354), plt.imshow(denoised, cmap='gray'), plt.title('Denoised'), plt.axis('off')
-        plt.subplot(355), plt.imshow(thresh, cmap='gray'), plt.title('Otsu'), plt.axis('off')
-        plt.subplot(356), plt.imshow(adapt_thresh, cmap='gray'), plt.title('Adaptive Threshold'), plt.axis('off')
-        plt.subplot(357), plt.imshow(morphological_img, cmap='gray'), plt.title('Morphological'), plt.axis('off')
-        plt.subplot(358), plt.imshow(sharpened_kernel, cmap='gray'), plt.title('Sharpen Kernel'), plt.axis('off')
-        plt.subplot(359), plt.imshow(sharpened_mask, cmap='gray'), plt.title('Sharpen Mask'), plt.axis('off')
-        plt.subplot(3,5,10), plt.imshow(thresh_sharpened_kernel, cmap='gray'), plt.title('Thresh + Sharpen Kernel'), plt.axis('off')
-        plt.subplot(3,5,11), plt.imshow(thresh_sharpened_mask, cmap='gray'), plt.title('Thresh + Sharpen Mask'), plt.axis('off')
-        plt.subplot(3,5,12), plt.imshow(binary_sauvola, cmap='gray'), plt.title('Sauvola'), plt.axis('off')
-        plt.tight_layout()
-        plt.savefig("debug_preprocess.png", dpi=300, bbox_inches='tight')
-        plt.show()
-    
-    if save_result:
-        cv2.imwrite(output_path, thresh)
-        print(f"Processed image saved to {output_path}")
+
+        plot_preprocess_results(
+            image=image,
+            contrast=contrast,
+            equalized=equalized,
+            denoised=denoised,
+            thresh=thresh,
+            adapt_thresh=adapt_thresh,
+            morphological_img=morphological_img,
+            sharpened_kernel=sharpened_kernel,
+            sharpened_mask=sharpened_mask,
+            thresh_sharpened_kernel=thresh_sharpened_kernel,
+            thresh_sharpened_mask=thresh_sharpened_mask,
+            binary_sauvola=binary_sauvola,
+            show=debug,
+            save_path=save_path if save_result else None
+        )
     
     return thresh_sharpened_mask
     
@@ -130,3 +117,57 @@ def sharpen_mask(image: np.ndarray):
     gaussian = cv2.GaussianBlur(image, (5, 5), 0)
     sharpened = cv2.addWeighted(image, 1.5, gaussian, -0.5, 0)
     return sharpened
+
+def plot_preprocess_results(
+    image=None,
+    contrast=None,
+    equalized=None,
+    denoised=None,
+    thresh=None,
+    adapt_thresh=None,
+    morphological_img=None,
+    sharpened_kernel=None,
+    sharpened_mask=None,
+    thresh_sharpened_kernel=None,
+    thresh_sharpened_mask=None,
+    binary_sauvola=None,
+    show=False,
+    save_path=None
+):
+    """Display or save a safe multi-step preprocessing visualization."""
+    steps = [
+        ("Deskewed", image),
+        ("CLAHE", contrast),
+        ("Equalized", equalized),
+        ("Denoised", denoised),
+        ("Otsu", thresh),
+        ("Adaptive Threshold", adapt_thresh),
+        ("Morphological", morphological_img),
+        ("Sharpen Kernel", sharpened_kernel),
+        ("Sharpen Mask", sharpened_mask),
+        ("Thresh + Sharpen Kernel", thresh_sharpened_kernel),
+        ("Thresh + Sharpen Mask", thresh_sharpened_mask),
+        ("Sauvola", binary_sauvola),
+    ]
+
+    plt.figure(figsize=(16, 10))
+    for i, (title, img) in enumerate(steps, start=1):
+        plt.subplot(3, 5, i)
+        if img is not None and isinstance(img, np.ndarray) and img.size > 0:
+            plt.imshow(img, cmap='gray')
+        else:
+            plt.imshow(np.zeros((50, 50)), cmap='gray')  # placeholder
+            plt.text(25, 25, 'None', ha='center', va='center', color='red', fontsize=8)
+        plt.title(title)
+        plt.axis('off')
+
+    plt.tight_layout()
+
+    # Save or show depending on flags
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"[DEBUG] Saved preprocess plot → {save_path}")
+    elif show:
+        plt.show()
+        plt.close()

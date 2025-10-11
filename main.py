@@ -15,6 +15,7 @@ import Levenshtein
 import argparse
 import matplotlib.pyplot as plt
 from evaluation import parse_nutrition_text, evaluate, evaluate_metric, export_to_csv
+os.makedirs("debug/preprocess", exist_ok=True) 
 
 def normalize_text(data):
     if isinstance(data, dict):
@@ -43,10 +44,9 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', ocr_lang: str =
 
     # Option 1: Use original perspective correction
     # rectified = perspective_correction(cropped, show_result=True, debug=False)
-
     scanner = NutritionLabelScanner()
     corners, image = scanner.detect_label(image=cropped, canny_low=30, canny_high=100,
-                        min_area_ratio=0.1, show_steps=False)
+                        min_area_ratio=0.1, show_steps=False, debug=False)
     
     if corners is not None:
         image = scanner.rectify_label(enhance=False)
@@ -54,7 +54,7 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', ocr_lang: str =
         image = cropped
     
     image = deskew(image, show_result=False, debug=False)
-    image = preprocess(image, save_result=False, debug=False)
+    image = preprocess(image, save_result=True, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)
 
     # compare_preprocessing_variants(deskewed)
     ocr_text = perform_ocr(image, engine=ocr_engine, lang=ocr_lang)
@@ -131,8 +131,12 @@ if __name__ == '__main__':
 
     for idx, image in enumerate(tqdm(os.listdir(DATASET_PATH), desc="Processing images")):
         output = run_pipeline(os.path.join(DATASET_PATH, image), args.ocr_engine, args.ocr_lang)
-        gt = label.get(image, "N/A")
         print(f"\nProcessing: {image}")
+        
+        gt = label.get(image, {})
+        if not isinstance(gt, dict):
+            print(f"Skipping {image} — invalid ground truth format ({type(gt)}).")
+            continue
 
         if output is not None:
             parsed_output = parse_nutrition_text(output)

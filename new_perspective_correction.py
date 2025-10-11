@@ -41,22 +41,11 @@ class NutritionLabelScanner:
     
     def preprocess_for_labels(self, image, blur_kernel=3, canny_low=30, canny_high=100):
         """Preprocess specifically for nutrition labels with better edge detection"""
-        # Resize for processing
         resized = self.resize_image(image)
-        
-        # Enhance contrast first
         enhanced = self.enhance_contrast(resized)
-        
-        # Convert to grayscale
         gray = cv2.cvtColor(enhanced, cv2.COLOR_BGR2GRAY)
-        
-        # Apply bilateral filter to reduce noise while keeping edges sharp
         filtered = cv2.bilateralFilter(gray, 9, 75, 75)
-        
-        # Apply slight Gaussian blur
         blurred = cv2.GaussianBlur(filtered, (blur_kernel, blur_kernel), 0)
-        
-        # Apply Canny edge detection with lower thresholds for labels
         edges = cv2.Canny(blurred, canny_low, canny_high)
         
         # Apply morphological operations to connect broken edges
@@ -68,10 +57,19 @@ class NutritionLabelScanner:
         
         return edges, resized
     
-    def find_label_contour(self, edges, min_area_ratio=0.1):
+    def find_label_contour(self, edges, min_area_ratio=0.1, debug=False):
         """Find rectangular contour that likely represents a nutrition label"""
         # Find contours
         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if debug:
+            debug_img = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+            cv2.drawContours(debug_img, contours, -1, (0, 255, 0), 2)
+            plt.figure(figsize=(10, 8))
+            plt.imshow(cv2.cvtColor(debug_img, cv2.COLOR_BGR2RGB))
+            plt.title("All Contours Found")
+            plt.axis("off")
+            plt.show()
         
         # Calculate minimum area based on image size
         image_area = edges.shape[0] * edges.shape[1]
@@ -248,7 +246,7 @@ class NutritionLabelScanner:
     
     def detect_label(self, image_path=None, image=None, 
                     blur_kernel=3, canny_low=30, canny_high=100,
-                    min_area_ratio=0.1, show_steps=False):
+                    min_area_ratio=0.1, show_steps=False, debug=False):
         """Main function to detect nutrition label in image"""
         
         # Load image
@@ -265,7 +263,7 @@ class NutritionLabelScanner:
         )
         
         # Find label contour
-        label_contour = self.find_label_contour(edges, min_area_ratio)
+        label_contour = self.find_label_contour(edges, min_area_ratio, debug)
         
         if label_contour is None:
             print("No label detected. Try adjusting parameters.")
