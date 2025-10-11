@@ -22,6 +22,12 @@ def preprocess(image: np.ndarray, save_result: bool = True, save_path: str = "ou
     binary_sauvola = (gray > sauvola).astype(np.uint8) * 255
     binary_sauvola = cv2.bitwise_not(binary_sauvola)
     
+    if is_text_dark(thresh):
+        binary_sauvola = cv2.bitwise_not(binary_sauvola)
+        thresh_sharpened_mask = cv2.bitwise_not(thresh_sharpened_mask)
+        thresh_sharpened_kernel = cv2.bitwise_not(thresh_sharpened_kernel)
+
+    
     if debug or save_result:
         
         contrast = enhance_contrast(gray)
@@ -47,7 +53,7 @@ def preprocess(image: np.ndarray, save_result: bool = True, save_path: str = "ou
             save_path=save_path if save_result else None
         )
     
-    return thresh_sharpened_mask
+    return thresh_sharpened_kernel
     
     # final = test(image)
     
@@ -171,3 +177,23 @@ def plot_preprocess_results(
     elif show:
         plt.show()
         plt.close()
+        
+        
+def is_text_dark(img):
+    """
+    Determine if text is darker than background by checking
+    which pixels (0 or 255) form more connected components
+    or by checking the mean of edge pixels (usually background)
+    """
+    # Method 1: Check corners (usually background)
+    h, w = img.shape
+    corner_size = min(h, w) // 10
+    corners = [
+        img[:corner_size, :corner_size],
+        img[:corner_size, -corner_size:],
+        img[-corner_size:, :corner_size],
+        img[-corner_size:, -corner_size:]
+    ]
+    corner_mean = np.mean([np.mean(corner) for corner in corners])
+    
+    return corner_mean > 127
