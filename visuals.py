@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for thread safety
 import matplotlib.pyplot as plt
 import cv2
 
@@ -26,14 +28,15 @@ def compare_preprocessing_variants(image: np.ndarray, output_path: str = "prepro
         ("Bilateral + Adaptive", adaptive(denoise(gray)))
     ]
 
-    plt.figure(figsize=(15, 10))
+    # Use explicit figure to avoid thread conflicts
+    fig = plt.figure(figsize=(15, 10))
     for i, (title, img) in enumerate(variants, 1):
-        plt.subplot(2, 3, i)
-        plt.imshow(img, cmap='gray')
-        plt.title(title)
-        plt.axis('off')
+        ax = fig.add_subplot(2, 3, i)
+        ax.imshow(img, cmap='gray')
+        ax.set_title(title)
+        ax.axis('off')
     
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    plt.show()
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
     print(f"Comparison saved to {output_path}")

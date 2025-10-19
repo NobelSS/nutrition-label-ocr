@@ -3,6 +3,8 @@ from PIL import Image
 import pytesseract
 import os
 import logging
+import json
+from openocr import OpenOCR
 
 # Suppress PaddleOCR verbose logging
 os.environ['FLAGS_allocator_strategy'] = 'auto_growth'
@@ -13,7 +15,6 @@ logging.getLogger('ppocr').setLevel(logging.WARNING)
 logging.getLogger('paddle').setLevel(logging.WARNING)
 
 from paddleocr import PaddleOCR
-
 
 def use_tesseract(image: np.ndarray):
     pil_image = Image.fromarray(image)
@@ -32,24 +33,59 @@ def use_paddleocr(image: np.ndarray, lang='en'):
         use_doc_unwarping=True,
         use_textline_orientation=False)
 
-    if len(image.shape) == 3 and image.shape[2] == 3:
-        # Assume input is RGB, convert to BGR for PaddleOCR
+    if image.ndim == 2:
+        # Grayscale → stack to 3 channels
+        image_bgr = np.stack([image] * 3, axis=-1)
+    elif image.ndim == 3:
+        if image.shape[2] == 4:
+            # RGBA → drop alpha
+            image = image[:, :, :3]
+        # RGB → convert to BGR
         image_bgr = image[:, :, ::-1]
     else:
-        # Grayscale image, convert to BGR
-        image_bgr = np.stack([image, image, image], axis=-1)
+        raise ValueError(f"Unexpected image shape: {image.shape}")
 
     # Perform OCR
-    
     result = ocr.predict(input=image_bgr)
-    
-    for res in result:
-        # res.print()
-        res.save_to_img("output")
-        res.save_to_json("output")
-   
 
-    return res
+    texts = result[0]['rec_texts']
+    
+    return "\n".join(texts)
+
+def use_svtrv2_mobile(image: np.ndarray):
+    
+    if image.ndim == 2:
+        # Grayscale → stack to 3 channels
+        image_bgr = np.stack([image] * 3, axis=-1)
+    elif image.ndim == 3:
+        if image.shape[2] == 4:
+            # RGBA → drop alpha
+            image = image[:, :, :3]
+        # RGB → convert to BGR
+        image_bgr = image[:, :, ::-1]
+    else:
+        raise ValueError(f"Unexpected image shape: {image.shape}")
+    
+    onnx_engine = OpenOCR(
+        backend='onnx',
+        device='cpu',
+        onnx_det_model_path='./model/det/dbnet.onnx',
+        onnx_rec_model_path='./model/rec/repsvtr_ch.onnx',
+    )
+    
+    print("Detector model path:", onnx_engine.text_detector.onnx_det_engine.onnx_session._model_path)
+    print("Recognizer model path:", onnx_engine.text_recognizer.onnx_rec_engine.onnx_session._model_path)
+    
+    result, _ = onnx_engine(img_numpy=image_bgr)
+    if not result or not isinstance(result[0], list):
+        return ""
+
+    data = result[0]
+
+    texts = [item['transcription'] for item in data if 'transcription' in item]
+
+    return " ".join(texts)
+
 
 def perform_ocr(image: np.ndarray, engine='tesseract', **kwargs):
     """
@@ -68,6 +104,8 @@ def perform_ocr(image: np.ndarray, engine='tesseract', **kwargs):
     elif engine.lower() == 'paddleocr':
         lang = kwargs.get('lang', 'en')
         return use_paddleocr(image, lang=lang)
+    elif engine.lower() == 'svtrv2_mobile':
+        return use_svtrv2_mobile(image)
     else:
         raise ValueError(f"Unsupported OCR engine: {engine}. Supported engines: 'tesseract', 'paddleocr'")
 

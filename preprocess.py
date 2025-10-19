@@ -1,5 +1,7 @@
 import numpy as np
 import cv2
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for thread safety
 import matplotlib.pyplot as plt
 from skimage.filters import threshold_sauvola
 
@@ -18,32 +20,32 @@ def preprocess(image: np.ndarray, save_result: bool = True, save_path: str = "ou
     thresh_sharpened_mask = binarize(sharpened_mask)
     thresh_sharpened_kernel = binarize(sharpened_kernel)
     
-    sauvola = threshold_sauvola(gray, window_size=25)
-    binary_sauvola = (gray > sauvola).astype(np.uint8) * 255
+    sauvola_threshold = threshold_sauvola(gray, window_size=25)
+    binary_sauvola = (gray > sauvola_threshold).astype(np.uint8) * 255
     binary_sauvola = cv2.bitwise_not(binary_sauvola)
     
-    if is_text_dark(thresh):
-        binary_sauvola = cv2.bitwise_not(binary_sauvola)
-        thresh_sharpened_mask = cv2.bitwise_not(thresh_sharpened_mask)
-        thresh_sharpened_kernel = cv2.bitwise_not(thresh_sharpened_kernel)
+    # if is_text_dark(thresh):
+    #     binary_sauvola = cv2.bitwise_not(binary_sauvola)
+    #     thresh_sharpened_mask = cv2.bitwise_not(thresh_sharpened_mask)
+    #     thresh_sharpened_kernel = cv2.bitwise_not(thresh_sharpened_kernel)
 
     
     if debug or save_result:
         
-        contrast = enhance_contrast(gray)
-        equalized = histogram_equalization(gray)
-        denoised = denoise(equalized)
-        adapt_thresh = adaptive_threshold(denoised)
-        morphological_img = morphological(thresh, kernel_size=2)
+        # contrast = enhance_contrast(gray)
+        # equalized = histogram_equalization(gray)
+        # denoised = denoise(equalized)
+        # adapt_thresh = adaptive_threshold(denoised)
+        # morphological_img = morphological(thresh, kernel_size=2)
 
         plot_preprocess_results(
             image=image,
-            contrast=contrast,
-            equalized=equalized,
-            denoised=denoised,
+            # contrast=contrast,
+            # equalized=equalized,
+            # denoised=denoised,
             thresh=thresh,
-            adapt_thresh=adapt_thresh,
-            morphological_img=morphological_img,
+            # adapt_thresh=adapt_thresh,
+            # morphological_img=morphological_img,
             sharpened_kernel=sharpened_kernel,
             sharpened_mask=sharpened_mask,
             thresh_sharpened_kernel=thresh_sharpened_kernel,
@@ -53,7 +55,7 @@ def preprocess(image: np.ndarray, save_result: bool = True, save_path: str = "ou
             save_path=save_path if save_result else None
         )
     
-    return thresh_sharpened_kernel
+    return thresh_sharpened_mask
     
     # final = test(image)
     
@@ -156,27 +158,28 @@ def plot_preprocess_results(
         ("Sauvola", binary_sauvola),
     ]
 
-    plt.figure(figsize=(16, 10))
+    # Use explicit figure to avoid thread conflicts
+    fig = plt.figure(figsize=(16, 10))
     for i, (title, img) in enumerate(steps, start=1):
-        plt.subplot(3, 5, i)
+        ax = fig.add_subplot(3, 5, i)
         if img is not None and isinstance(img, np.ndarray) and img.size > 0:
-            plt.imshow(img, cmap='gray')
+            ax.imshow(img, cmap='gray')
         else:
-            plt.imshow(np.zeros((50, 50)), cmap='gray')  # placeholder
-            plt.text(25, 25, 'None', ha='center', va='center', color='red', fontsize=8)
-        plt.title(title)
-        plt.axis('off')
+            ax.imshow(np.zeros((50, 50)), cmap='gray')  # placeholder
+            ax.text(25, 25, 'None', ha='center', va='center', color='red', fontsize=8)
+        ax.set_title(title)
+        ax.axis('off')
 
-    plt.tight_layout()
+    fig.tight_layout()
 
     # Save or show depending on flags
     if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close(fig)
         print(f"[DEBUG] Saved preprocess plot → {save_path}")
     elif show:
         plt.show()
-        plt.close()
+        plt.close(fig)
         
         
 def is_text_dark(img):

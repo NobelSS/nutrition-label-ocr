@@ -63,10 +63,12 @@ def parse_nutrition_text(text):
                     data["unit"] = units[0]
                 
                 # Look for percentage (% or percent_dv) after the value
-                # Pattern: look for percentage within next 20 characters after the match
+                # Pattern: look for percentage within next 30 characters after the match
+                # Skip over any unit text that might be between value and percentage
                 match_end = match.end()
-                text_after = text_lower[match_end:match_end + 10]
-                percent_match = re.search(r'^\s*(\d+)\s*%', text_after)
+                text_after = text_lower[match_end:match_end + 30]
+                # Match: optional whitespace, optional unit words, then digits and %
+                percent_match = re.search(r'^\s*(?:[a-z]+\s*)?(\d+)\s*%', text_after)
                 
                 if percent_match:
                     data["percent_dv"] = int(percent_match.group(1))

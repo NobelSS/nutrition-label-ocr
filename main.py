@@ -15,6 +15,7 @@ import Levenshtein
 import argparse
 import matplotlib.pyplot as plt
 from evaluation import parse_nutrition_text, evaluate, evaluate_metric, export_to_csv
+from concurrent.futures import ThreadPoolExecutor, as_completed
 os.makedirs("debug/preprocess", exist_ok=True) 
 
 def normalize_text(data):
@@ -60,12 +61,45 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', ocr_lang: str =
     ocr_text = perform_ocr(image, engine=ocr_engine, lang=ocr_lang)
 
     return ocr_text
+
+
+def process_single_image(image_name: str, dataset_path: str, label: dict, ocr_engine: str, ocr_lang: str):
+    """
+    Process a single image and return evaluation metrics
+    
+    Args:
+        image_name: Name of the image file
+        dataset_path: Path to dataset directory
+        label: Ground truth labels dictionary
+        ocr_engine: OCR engine to use
+        ocr_lang: Language for OCR
+        
+    Returns:
+        Tuple of (image_name, metric_report) or (image_name, None) if processing failed
+    """
+    try:
+        image_path = os.path.join(dataset_path, image_name)
+        output = run_pipeline(image_path, ocr_engine, ocr_lang)
+        
+        gt = label.get(image_name, {})
+        if not isinstance(gt, dict):
+            return (image_name, None)
+        
+        if output is not None:
+            parsed_output = parse_nutrition_text(output)
+            metric_report = evaluate_metric(parsed_output, gt)
+            return (image_name, metric_report)
+        else:
+            return (image_name, None)
+    except Exception as e:
+        print(f"Error processing {image_name}: {str(e)}")
+        return (image_name, None)
     
     
 def parse_arguments():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Nutrition Label OCR Pipeline')
-    parser.add_argument('--ocr-engine', choices=['tesseract', 'paddleocr'],
+    parser.add_argument('--ocr-engine', choices=['tesseract', 'paddleocr', 'svtrv2_mobile'],
                        default='tesseract', help='OCR engine to use (default: tesseract)')
     parser.add_argument('--ocr-lang', default='en',
                        help='Language for OCR (default: en, used with PaddleOCR)')
@@ -77,6 +111,8 @@ def parse_arguments():
                        help='Maximum number of images to process (default: 50)')
     parser.add_argument('--single-image', type=str,
                        help='Process a single image file instead of dataset')
+    parser.add_argument('--threads', type=int, default=4,
+                       help='Number of threads for parallel processing (default: 4)')
 
     return parser.parse_args()
 
@@ -84,8 +120,6 @@ if __name__ == '__main__':
     args = parse_arguments()
 
     print(f"Using OCR engine: {args.ocr_engine}")
-    if args.ocr_engine == 'paddleocr':
-        print(f"OCR language: {args.ocr_lang}")
 
     LABEL_PATH = args.label_path
     try:
@@ -128,30 +162,47 @@ if __name__ == '__main__':
         exit(1)
 
     evaluation = {}
-
-    for idx, image in enumerate(tqdm(os.listdir(DATASET_PATH), desc="Processing images")):
-        output = run_pipeline(os.path.join(DATASET_PATH, image), args.ocr_engine, args.ocr_lang)
-        print(f"\nProcessing: {image}")
+    
+    # Get list of images to process
+    all_images = os.listdir(DATASET_PATH)
+    images_to_process = all_images[:args.max_images]
+    
+    print(f"Processing {len(images_to_process)} images using {args.threads} threads...")
+    
+    # Multi-threaded processing
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+        # Submit all tasks
+        future_to_image = {
+            executor.submit(process_single_image, image, DATASET_PATH, label, args.ocr_engine, args.ocr_lang): image
+            for image in images_to_process
+        }
         
-        gt = label.get(image, {})
-        if not isinstance(gt, dict):
-            print(f"Skipping {image} — invalid ground truth format ({type(gt)}).")
-            continue
-
-        if output is not None:
-            parsed_output = parse_nutrition_text(output)
-            metric_report = evaluate_metric(parsed_output, gt)
-            evaluation[image] = metric_report
-        else:
-            print("No object detected on cropping.\n")
-
-        if idx >= args.max_images - 1:
-            break
+        # Process completed tasks with progress bar
+        for future in tqdm(as_completed(future_to_image), total=len(images_to_process), desc="Processing images"):
+            image_name = future_to_image[future]
+            try:
+                image_name, metric_report = future.result()
+                if metric_report is not None:
+                    evaluation[image_name] = metric_report
+            except Exception as e:
+                print(f"\nError processing {image_name}: {str(e)}")
 
     if len(evaluation) > 0:
-        evaluation_csv = 'evaluation_report_sharp_kernel.csv'
+        evaluation_csv = f'evaluation_report_{args.ocr_engine}.csv'
         export_to_csv(evaluation, evaluation_csv)
-        print(f"Evaluation report exported to {evaluation_csv}")
+        print(f"\nEvaluation report exported to {evaluation_csv}")
+        
+        # Calculate and display average metrics
+        avg_field_acc = sum(e['field_accuracy'] for e in evaluation.values()) / len(evaluation)
+        avg_value_acc = sum(e['value_accuracy'] for e in evaluation.values()) / len(evaluation)
+        avg_unit_acc = sum(e['unit_accuracy'] for e in evaluation.values()) / len(evaluation)
+        avg_percent_acc = sum(e['percent_dv_accuracy'] for e in evaluation.values()) / len(evaluation)
+        
+        print(f"\nAverage Metrics ({len(evaluation)} images):")
+        print(f"  Field Accuracy: {avg_field_acc:.2%}")
+        print(f"  Value Accuracy: {avg_value_acc:.2%}")
+        print(f"  Unit Accuracy: {avg_unit_acc:.2%}")
+        print(f"  Percent DV Accuracy: {avg_percent_acc:.2%}")
 
 
 
