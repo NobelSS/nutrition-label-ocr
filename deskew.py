@@ -11,7 +11,7 @@ def deskew(image: np.ndarray, show_result: bool = False, debug: bool = False):
 
     _, binary = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) 
 
-    text_is_dark = is_text_dark(binary)
+    text_is_dark = is_text_dark(binary, debug=debug)
 
     def compute_projection_profile(img, text_dark=True):
         """

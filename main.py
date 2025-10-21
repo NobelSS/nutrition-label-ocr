@@ -26,7 +26,7 @@ def normalize_text(data):
     else:
         return str(data)
 
-def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', ocr_lang: str = 'en') -> str:
+def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', draw_boxes: bool = False, ocr_lang: str = 'en') -> str:
     """
     Run the complete OCR pipeline on an image
 
@@ -58,12 +58,12 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', ocr_lang: str =
     image = preprocess(image, save_result=True, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)
 
     # compare_preprocessing_variants(deskewed)
-    ocr_text = perform_ocr(image, engine=ocr_engine, lang=ocr_lang)
+    ocr_text = perform_ocr(image, engine=ocr_engine, draw_boxes=draw_boxes, lang=ocr_lang)
 
     return ocr_text
 
 
-def process_single_image(image_name: str, dataset_path: str, label: dict, ocr_engine: str, ocr_lang: str):
+def process_single_image(image_name: str, dataset_path: str, label: dict, ocr_engine: str, draw_boxes: bool, ocr_lang: str):
     """
     Process a single image and return evaluation metrics
     
@@ -79,7 +79,7 @@ def process_single_image(image_name: str, dataset_path: str, label: dict, ocr_en
     """
     try:
         image_path = os.path.join(dataset_path, image_name)
-        output = run_pipeline(image_path, ocr_engine, ocr_lang)
+        output = run_pipeline(image_path, ocr_engine, draw_boxes, ocr_lang)
         
         gt = label.get(image_name, {})
         if not isinstance(gt, dict):
@@ -113,6 +113,8 @@ def parse_arguments():
                        help='Process a single image file instead of dataset')
     parser.add_argument('--threads', type=int, default=4,
                        help='Number of threads for parallel processing (default: 4)')
+    parser.add_argument('--draw-boxes', action='store_true', default=False,
+                       help='Draw bounding boxes on the image')
 
     return parser.parse_args()
 
@@ -140,7 +142,7 @@ if __name__ == '__main__':
             exit(1)
 
         print(f'Processing single image: {args.single_image}')
-        output = run_pipeline(args.single_image, args.ocr_engine, args.ocr_lang)
+        output = run_pipeline(args.single_image, args.ocr_engine, args.draw_boxes, args.ocr_lang)
 
         if output is not None:
             print(f'OCR Output:\n{output}')
@@ -173,7 +175,7 @@ if __name__ == '__main__':
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
         # Submit all tasks
         future_to_image = {
-            executor.submit(process_single_image, image, DATASET_PATH, label, args.ocr_engine, args.ocr_lang): image
+            executor.submit(process_single_image, image, DATASET_PATH, label, args.ocr_engine, args.draw_boxes, args.ocr_lang): image
             for image in images_to_process
         }
         

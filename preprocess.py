@@ -32,7 +32,7 @@ def preprocess(image: np.ndarray, save_result: bool = True, save_path: str = "ou
     
     if debug or save_result:
         
-        # contrast = enhance_contrast(gray)
+        contrast = enhance_contrast(gray)
         # equalized = histogram_equalization(gray)
         # denoised = denoise(equalized)
         # adapt_thresh = adaptive_threshold(denoised)
@@ -55,7 +55,7 @@ def preprocess(image: np.ndarray, save_result: bool = True, save_path: str = "ou
             save_path=save_path if save_result else None
         )
     
-    return thresh_sharpened_mask
+    return sharpened_mask
     
     # final = test(image)
     
@@ -182,21 +182,50 @@ def plot_preprocess_results(
         plt.close(fig)
         
         
-def is_text_dark(img):
+import cv2
+import numpy as np
+
+def is_text_dark(img: np.ndarray, debug: bool = False) -> bool:
     """
-    Determine if text is darker than background by checking
-    which pixels (0 or 255) form more connected components
-    or by checking the mean of edge pixels (usually background)
+    Determine if text is darker than the background.
+    Robust to dark borders, colored backgrounds, and low contrast.
+
+    Args:
+        img: Grayscale image (uint8)
+        debug: Print stats for analysis
+
+    Returns:
+        True if text is dark-on-light, False if text is light-on-dark.
     """
-    # Method 1: Check corners (usually background)
-    h, w = img.shape
-    corner_size = min(h, w) // 10
-    corners = [
-        img[:corner_size, :corner_size],
-        img[:corner_size, -corner_size:],
-        img[-corner_size:, :corner_size],
-        img[-corner_size:, -corner_size:]
-    ]
-    corner_mean = np.mean([np.mean(corner) for corner in corners])
-    
-    return corner_mean > 127
+    if len(img.shape) != 2:
+        raise ValueError("Input must be a grayscale image.")
+
+    # Apply Gaussian blur to reduce noise
+    blurred = cv2.GaussianBlur(img, (3, 3), 0)
+
+    # Otsu threshold
+    _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    mean_original = np.mean(img)
+    mean_binary = np.mean(binary)
+
+    diff = abs(mean_binary - mean_original)
+
+    if debug:
+        print(f"[is_text_dark] mean_original={mean_original:.2f}, mean_binary={mean_binary:.2f}, diff={diff:.2f}")
+
+    if diff < 5:
+        # Fallback: histogram-based analysis for low-contrast case
+        hist = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()
+        dark_pixels = np.sum(hist[:128])
+        bright_pixels = np.sum(hist[128:])
+        text_dark = dark_pixels < bright_pixels
+        if debug:
+            print(f"[is_text_dark: fallback] dark_px={dark_pixels}, bright_px={bright_pixels}, text_dark={text_dark}")
+    else:
+        # Normal case — use Otsu-based inference
+        text_dark = mean_binary > mean_original
+        if debug:
+            print(f"[is_text_dark: otsu] text_dark={text_dark}")
+
+    return text_dark
