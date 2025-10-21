@@ -4,7 +4,8 @@ import pytesseract
 import os
 import logging
 import json
-from openocr import OpenOCR
+from openocr import OpenOCR, OpenRecognizer
+from paddleocr import TextDetection, PaddleOCR
 
 # Suppress PaddleOCR verbose logging
 os.environ['FLAGS_allocator_strategy'] = 'auto_growth'
@@ -13,8 +14,6 @@ os.environ['FLAGS_fraction_of_gpu_memory_to_use'] = '0.5'
 # Set logging level to reduce verbose output
 logging.getLogger('ppocr').setLevel(logging.WARNING)
 logging.getLogger('paddle').setLevel(logging.WARNING)
-
-from paddleocr import PaddleOCR
 
 def use_tesseract(image: np.ndarray):
     pil_image = Image.fromarray(image)
@@ -52,40 +51,123 @@ def use_paddleocr(image: np.ndarray, lang='en'):
     
     return "\n".join(texts)
 
-def use_svtrv2_mobile(image: np.ndarray):
+def use_svtrv2_mobile_with_paddleocr_detection(image: np.ndarray):
     
-    if image.ndim == 2:
-        # Grayscale → stack to 3 channels
-        image_bgr = np.stack([image] * 3, axis=-1)
-    elif image.ndim == 3:
-        if image.shape[2] == 4:
-            # RGBA → drop alpha
-            image = image[:, :, :3]
-        # RGB → convert to BGR
-        image_bgr = image[:, :, ::-1]
-    else:
-        raise ValueError(f"Unexpected image shape: {image.shape}")
+    text_detector = TextDetection()
+    det_result = text_detector.predict(image)
+        
+    boxes = det_result[0]['dt_polys']
     
-    onnx_engine = OpenOCR(
+    # Initialize SVTR recognizer
+    recognizer = OpenRecognizer(
         backend='onnx',
-        device='cpu',
-        onnx_det_model_path='./model/det/dbnet.onnx',
-        onnx_rec_model_path='./model/rec/repsvtr_ch.onnx',
+        onnx_model_path='./model/rec/repsvtr_ch.onnx',
+        
     )
     
-    print("Detector model path:", onnx_engine.text_detector.onnx_det_engine.onnx_session._model_path)
-    print("Recognizer model path:", onnx_engine.text_recognizer.onnx_rec_engine.onnx_session._model_path)
+    texts = []
+    img_height, img_width = image.shape[:2]
     
-    result, _ = onnx_engine(img_numpy=image_bgr)
-    if not result or not isinstance(result[0], list):
-        return ""
+    for idx, box in enumerate(boxes):
+        try:
+            # Crop region with bounds checking
+            x_coords = [point[0] for point in box]
+            y_coords = [point[1] for point in box]
+            
+            x_min = max(0, int(min(x_coords)))
+            x_max = min(img_width, int(max(x_coords)))
+            y_min = max(0, int(min(y_coords)))
+            y_max = min(img_height, int(max(y_coords)))
+            
+            cropped = image[y_min:y_max, x_min:x_max]
+                        
+            # Skip if cropped region is empty
+            if cropped.size == 0:
+                print(f"Box {idx}: Empty crop - skipping")
+                continue
+            
+            # Recognize text
+            rec_result = recognizer(img_numpy=cropped)
+            # print(f"Box {idx}: Recognition result = {rec_result}")
+            
+            # Handle different result formats
+            if rec_result:
+                
+                texts.append(rec_result[0]['text'])
+                
+                # if text and text.strip():
+                #     texts.append(text.strip())
+                #     print(f"Box {idx}: Added text '{text.strip()}'")
+        
+        except Exception as e:
+            print(f"Box {idx}: Error processing - {str(e)}")
+            continue
+    
+    return "\n".join(texts)
 
-    data = result[0]
-
-    texts = [item['transcription'] for item in data if 'transcription' in item]
-
-    return " ".join(texts)
-
+def use_svtrv2_mobile_with_easyocr_detection(image: np.ndarray):
+    import easyocr
+    
+    # Initialize EasyOCR for detection only
+    reader = easyocr.Reader(['en'], recognizer=False, gpu=False)
+    
+    if image.ndim == 2:
+        image_rgb = np.stack([image] * 3, axis=-1)
+    elif image.ndim == 3:
+        if image.shape[2] == 4:
+            image_rgb = image[:, :, :3]
+        else:
+            image_rgb = image
+    
+    # Detect text regions
+    horizontal_list, free_list = reader.detect(image_rgb)
+    
+    # Initialize SVTR recognizer
+    recognizer = OpenRecognizer(
+        backend='onnx',
+        onnx_model_path='./model/rec/repsvtr_ch.onnx'
+    )
+    
+    texts = []
+    img_height, img_width = image_rgb.shape[:2]
+    
+    for idx, box in enumerate(horizontal_list[0]):
+        try:
+            x_min, x_max, y_min, y_max = map(int, box)
+            
+            # Bounds checking
+            x_min = max(0, x_min)
+            x_max = min(img_width, x_max)
+            y_min = max(0, y_min)
+            y_max = min(img_height, y_max)
+            
+            # Skip invalid boxes
+            # if x_max <= x_min or y_max <= y_min:
+            #     continue
+                
+            # if (x_max - x_min) < 5 or (y_max - y_min) < 5:
+            #     continue
+            
+            cropped = image_rgb[y_min:y_max, x_min:x_max]
+            
+            if cropped.size == 0:
+                continue
+            
+            # Convert to BGR for consistency
+            cropped_bgr = cropped[:, :, ::-1]
+            
+            # Recognize text
+            rec_result = recognizer(img_numpy=cropped_bgr)
+            
+            # Handle different result formats
+            if rec_result:
+               texts.append(rec_result[0]['text'])
+                    
+        except Exception as e:
+            print(f"Box {idx}: Error - {str(e)}")
+            continue
+    
+    return "\n".join(texts)
 
 def perform_ocr(image: np.ndarray, engine='tesseract', **kwargs):
     """
@@ -99,15 +181,29 @@ def perform_ocr(image: np.ndarray, engine='tesseract', **kwargs):
     Returns:
         Extracted text as string
     """
+    
+    if image.ndim == 2:
+        # Grayscale → stack to 3 channels
+        image = np.stack([image] * 3, axis=-1)
+    elif image.ndim == 3:
+        if image.shape[2] == 4:
+            # RGBA → drop alpha
+            image = image[:, :, :3]
+        # RGB → convert to BGR
+        image = image[:, :, ::-1]
+    else:
+        raise ValueError(f"Unexpected image shape: {image.shape}")
+    
     if engine.lower() == 'tesseract':
         return use_tesseract(image)
     elif engine.lower() == 'paddleocr':
         lang = kwargs.get('lang', 'en')
         return use_paddleocr(image, lang=lang)
     elif engine.lower() == 'svtrv2_mobile':
-        return use_svtrv2_mobile(image)
+        # return use_svtrv2_mobile_with_paddleocr_detection(image)
+        return use_svtrv2_mobile_with_easyocr_detection(image)
     else:
-        raise ValueError(f"Unsupported OCR engine: {engine}. Supported engines: 'tesseract', 'paddleocr'")
+        raise ValueError(f"Unsupported OCR engine: {engine}. Supported engines: 'tesseract', 'paddleocr', 'svtrv2_mobile'")
 
 
 
