@@ -1,4 +1,15 @@
 import re
+from enum import Enum
+
+class PipelineVariation(Enum):
+    """Enum for different pipeline variations"""
+    FULL_PIPELINE = "full_pipeline"
+    NO_PIPELINE = "no_pipeline"
+    NO_OBJECT_DETECTION = "no_object_detection"
+    NO_RECTIFICATION = "no_rectification"
+    NO_DESKEW = "no_deskew"
+    NO_DESKEW_NO_RECTIFICATION = "no_deskew_no_rectification"
+    NO_PREPROCESS = "no_preprocess"
 
 FIELDS = [
     # --- Serving Information ---
