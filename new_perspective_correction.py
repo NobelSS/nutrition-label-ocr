@@ -69,7 +69,8 @@ class NutritionLabelScanner:
             plt.imshow(cv2.cvtColor(debug_img, cv2.COLOR_BGR2RGB))
             plt.title("All Contours Found")
             plt.axis("off")
-            plt.show()
+            # plt.show()
+            plt.savefig("debug_perspective_correction.png", dpi=300, bbox_inches='tight')
         
         # Calculate minimum area based on image size
         image_area = edges.shape[0] * edges.shape[1]
@@ -97,18 +98,18 @@ class NutritionLabelScanner:
                 # For more than 4 vertices, try to find the best 4 corners
                 if len(approx) > 4:
                     # Find convex hull
-                    # hull = cv2.convexHull(contour)
-                    # epsilon = 0.02 * cv2.arcLength(hull, True)
-                    # approx = cv2.approxPolyDP(hull, epsilon, True)
+                    hull = cv2.convexHull(contour)
+                    epsilon = 0.02 * cv2.arcLength(hull, True)
+                    approx = cv2.approxPolyDP(hull, epsilon, True)
                     
-                    # if len(approx) >= 4:
-                    #     # Take the 4 corners that form the largest quadrilateral
-                    #     approx = self.get_best_quadrilateral(approx)
+                    if len(approx) >= 4:
+                        # Take the 4 corners that form the largest quadrilateral
+                        approx = self.get_best_quadrilateral(approx)
                     
-                    rect = cv2.minAreaRect(approx)  # returns center, size, angle
-                    box = cv2.boxPoints(rect)       # 4 corners
-                    box = box.astype(np.int32).reshape(-1, 1, 2)
-                    return box
+                    # rect = cv2.minAreaRect(approx)  # returns center, size, angle
+                    # box = cv2.boxPoints(rect)       # 4 corners
+                    # box = box.astype(np.int32).reshape(-1, 1, 2)
+                    # return box
                 
                 if len(approx) == 4:
                     # Check aspect ratio (labels are usually rectangular)
@@ -217,33 +218,6 @@ class NutritionLabelScanner:
         warped = cv2.warpPerspective(image, M, (width, height))
         return warped
     
-    def enhance_text_readability(self, image):
-        """Apply specific enhancements for text readability in labels"""
-        # Convert to grayscale if needed
-        if len(image.shape) == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = image
-        
-        # Apply CLAHE for better contrast
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(gray)
-        
-        # Apply bilateral filter to smooth while preserving edges
-        filtered = cv2.bilateralFilter(enhanced, 9, 80, 80)
-        
-        # Apply adaptive threshold
-        binary = cv2.adaptiveThreshold(
-            filtered, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-        )
-        
-        # Clean up with morphological operations
-        kernel = np.ones((2,2), np.uint8)
-        cleaned = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, kernel)
-        
-        return cleaned
-    
     def detect_label(self, image_path=None, image=None, 
                     blur_kernel=3, canny_low=30, canny_high=100,
                     min_area_ratio=0.1, show_steps=False, debug=False):
@@ -283,7 +257,7 @@ class NutritionLabelScanner:
         
         return scaled_contour, image
     
-    def rectify_label(self, image=None, corners=None, enhance=True, 
+    def rectify_label(self, image=None, corners=None, 
                      target_width=400, target_height=600):
         """Apply perspective correction and enhancement specifically for labels"""
         if image is None:
@@ -297,14 +271,8 @@ class NutritionLabelScanner:
         # Apply perspective transform
         rectified = self.apply_perspective_transform(image, corners)
         
-        # Enhance for text readability if requested
-        if enhance:
-            enhanced = self.enhance_text_readability(rectified)
-            self.processed_image = enhanced
-            return enhanced
-        else:
-            self.processed_image = rectified
-            return rectified
+        self.processed_image = rectified
+        return rectified
     
     def show_detection_steps(self, original, edges, resized, contour):
         """Visualize the detection process"""
@@ -346,7 +314,8 @@ class NutritionLabelScanner:
         axes[1,1].axis('off')
         
         plt.tight_layout()
-        plt.show()
+        # plt.show()
+        plt.savefig("debug_perspective_correction_steps.png", dpi=300, bbox_inches='tight')
     
     def show_detection_failure(self, original, edges, resized):
         """Show why detection might have failed"""
@@ -365,7 +334,8 @@ class NutritionLabelScanner:
         axes[2].axis('off')
         
         plt.tight_layout()
-        plt.show()
+        # plt.show()
+        plt.savefig("debug_perspective_correction_failure.png", dpi=300, bbox_inches='tight')
     
     def save_result(self, output_path, image=None):
         """Save the processed image"""

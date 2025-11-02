@@ -206,26 +206,14 @@ def is_text_dark(img: np.ndarray, debug: bool = False) -> bool:
     # Otsu threshold
     _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
+    white_ratio = np.mean(binary == 255)  # fraction of white pixels
     mean_original = np.mean(img)
     mean_binary = np.mean(binary)
 
-    diff = abs(mean_binary - mean_original)
+    # Heuristic: if most of the image is white after thresholding → text is dark
+    text_dark = white_ratio > 0.5
 
     if debug:
-        print(f"[is_text_dark] mean_original={mean_original:.2f}, mean_binary={mean_binary:.2f}, diff={diff:.2f}")
-
-    if diff < 5:
-        # Fallback: histogram-based analysis for low-contrast case
-        hist = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()
-        dark_pixels = np.sum(hist[:128])
-        bright_pixels = np.sum(hist[128:])
-        text_dark = dark_pixels < bright_pixels
-        if debug:
-            print(f"[is_text_dark: fallback] dark_px={dark_pixels}, bright_px={bright_pixels}, text_dark={text_dark}")
-    else:
-        # Normal case — use Otsu-based inference
-        text_dark = mean_binary > mean_original
-        if debug:
-            print(f"[is_text_dark: otsu] text_dark={text_dark}")
+        print(f"[is_text_dark] white_ratio={white_ratio:.3f}, mean_original={mean_original:.2f}, mean_binary={mean_binary:.2f}, text_dark={text_dark}")
 
     return text_dark

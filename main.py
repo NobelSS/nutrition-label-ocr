@@ -62,7 +62,7 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', draw_boxes: boo
                             min_area_ratio=0.1, show_steps=False, debug=False)
         
         if corners is not None:
-            image = scanner.rectify_label(enhance=False)
+            image = scanner.rectify_label()
         if image is None:
             image = cropped
         
@@ -79,10 +79,10 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', draw_boxes: boo
                             min_area_ratio=0.1, show_steps=False, debug=False)
         
         if corners is not None:
-            image = scanner.rectify_label(enhance=False)
+            image = scanner.rectify_label()
         
         image = deskew(image, show_result=False, debug=False)
-        image = preprocess(image, save_result=True, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)
+        image = preprocess(image, save_result=False, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)
         
         ocr_text = perform_ocr(image, engine=ocr_engine, draw_boxes=draw_boxes, lang=ocr_lang)
         return ocr_text
@@ -98,7 +98,7 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', draw_boxes: boo
         image = cropped
         
         image = deskew(image, show_result=False, debug=False)
-        image = preprocess(image, save_result=True, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)
+        image = preprocess(image, save_result=False, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)
         
         ocr_text = perform_ocr(image, engine=ocr_engine, draw_boxes=draw_boxes, lang=ocr_lang)
         return ocr_text
@@ -115,12 +115,12 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', draw_boxes: boo
                             min_area_ratio=0.1, show_steps=False, debug=False)
         
         if corners is not None:
-            image = scanner.rectify_label(enhance=False)
+            image = scanner.rectify_label()
         if image is None:
             image = cropped
         
         # Skip deskew
-        image = preprocess(image, save_result=True, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)
+        image = preprocess(image, save_result=False, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)
         
         ocr_text = perform_ocr(image, engine=ocr_engine, draw_boxes=draw_boxes, lang=ocr_lang)
         return ocr_text
@@ -136,7 +136,7 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', draw_boxes: boo
         image = cropped
         
         # Skip deskew
-        image = preprocess(image, save_result=True, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)
+        image = preprocess(image, save_result=False, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)
         
         ocr_text = perform_ocr(image, engine=ocr_engine, draw_boxes=draw_boxes, lang=ocr_lang)
         return ocr_text
@@ -153,7 +153,7 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', draw_boxes: boo
                             min_area_ratio=0.1, show_steps=False, debug=False)
         
         if corners is not None:
-            image = scanner.rectify_label(enhance=False)
+            image = scanner.rectify_label()
         if image is None:
             image = cropped
         
