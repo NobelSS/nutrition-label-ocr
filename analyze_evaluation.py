@@ -197,7 +197,7 @@ def generate_text_report(analysis: Dict, output_path: Path):
         if analysis['consistent_low_accuracy']:
             f.write("CONSISTENTLY LOW ACCURACY IMAGES\n")
             f.write("-" * 80 + "\n")
-            f.write("Images that appear in multiple CSV files with low field_accuracy\n")
+            f.write("Images that appear in multiple CSV files with low field_accuracy in full_pipeline\n")
             f.write("Sorted by consistency rate (how often they're low) and average accuracy\n\n")
             
             # Filter to show only images that appear in multiple files
@@ -205,11 +205,20 @@ def generate_text_report(analysis: Dict, output_path: Path):
                                if img['total_files'] > 1]
             
             if multi_file_images:
-                # Show only images that have average field_accuracy below threshold
-                filtered_images = [img for img in multi_file_images 
-                                 if img['average_field_accuracy'] < agg['threshold']]
+                # Show only images where full_pipeline has low accuracy
+                filtered_images = []
+                for img in multi_file_images:
+                    # Find the full_pipeline entry for this image
+                    full_pipeline_detail = next(
+                        (d for d in img['details'] 
+                         if 'evaluation_report_full_pipeline.csv' in d['file']),
+                        None
+                    )
+                    # Include if full_pipeline exists and has low accuracy
+                    if full_pipeline_detail and full_pipeline_detail['field_accuracy'] < agg['threshold']:
+                        filtered_images.append(img)
                 
-                f.write(f"Images appearing in multiple files with low accuracy: {len(filtered_images)}\n\n")
+                f.write(f"Images appearing in multiple files with low accuracy in full_pipeline: {len(filtered_images)}\n\n")
                 
                 for img in filtered_images:
                     consistency_pct = img['consistency_rate'] * 100
@@ -222,8 +231,10 @@ def generate_text_report(analysis: Dict, output_path: Path):
                     # Show details for each file
                     for detail in sorted(img['details'], key=lambda x: x['field_accuracy']):
                         status = "LOW" if detail['field_accuracy'] < agg['threshold'] else "OK"
+                        is_full_pipeline = 'evaluation_report_full_pipeline.csv' in detail['file']
+                        marker = " <-- full_pipeline" if is_full_pipeline else ""
                         f.write(f"    - {detail['file']:50s} | "
-                               f"{detail['field_accuracy']:.4f} ({status})\n")
+                               f"{detail['field_accuracy']:.4f} ({status}){marker}\n")
                     f.write("\n")
             else:
                 f.write("No images appear in multiple CSV files.\n")
