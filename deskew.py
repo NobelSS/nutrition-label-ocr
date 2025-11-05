@@ -37,17 +37,13 @@ def deskew(image: np.ndarray, show_result: bool = False, debug: bool = False):
             _, rotated = cv2.threshold(rotated, 127, 255, cv2.THRESH_BINARY)
             
             proj = compute_projection_profile(rotated, text_dark)
-            score = np.std(proj)
+            score = np.sum((proj[1:] - proj[:-1]) ** 2)
             scores.append(score)
 
-            if text_dark:
-                if score < best_score:
-                    best_score = score
-                    best_angle = angle
-            else:
-                if score > best_score:
-                    best_score = score
-                    best_angle = angle
+            if score > best_score:
+                best_score = score
+                best_angle = angle
+
                 
         if debug:
             plt.figure(figsize=(10, 5))
@@ -58,6 +54,7 @@ def deskew(image: np.ndarray, show_result: bool = False, debug: bool = False):
             plt.grid(True, alpha=0.3)
             plt.axvline(x=best_angle, color='r', linestyle='--', label=f'Best angle: {best_angle:.2f}°')
             plt.legend()
+            plt.savefig("debug_deskew_score_curve.png", dpi=300, bbox_inches='tight')
             plt.show()
         
         return best_angle

@@ -47,6 +47,31 @@ def rotate_image(image, angle):
     
     return rotated
 
+def rotate_image_no_border(image, angle):
+    """Rotate image without black borders by cropping the largest valid rectangle."""
+    h, w = image.shape[:2]
+    center = (w // 2, h // 2)
+    
+    # Rotation matrix (no canvas expansion)
+    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    
+    # Rotate within same dimensions
+    rotated = cv2.warpAffine(image, rotation_matrix, (w, h), flags=cv2.INTER_LINEAR)
+    
+    # Compute the largest possible rectangle inside the rotated image
+    abs_cos = abs(rotation_matrix[0, 0])
+    abs_sin = abs(rotation_matrix[0, 1])
+    bound_w = int(w * abs_cos + h * abs_sin)
+    bound_h = int(h * abs_cos + w * abs_sin)
+    
+    # Center crop to original size
+    x = (bound_w - w) // 2
+    y = (bound_h - h) // 2
+    cropped = rotated[y:y + h, x:x + w]
+    
+    return cropped
+
+
 def process_dataset(source_dir='dataset/labeled', output_dir='dataset/rotated', 
                    min_angle=-10, max_angle=10, seed=None):
     """
@@ -111,5 +136,5 @@ if __name__ == "__main__":
         output_dir='dataset/rotated',
         min_angle=-10,
         max_angle=10,
-        seed=None  # Set to a number for reproducible results
+        seed=42  # Set to a number for reproducible results
     )
