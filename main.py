@@ -213,8 +213,8 @@ def parse_arguments():
                        help='Path to dataset directory (default: dataset/labeled)')
     parser.add_argument('--label-path', default='dataset/label.json',
                        help='Path to label file (default: dataset/label.json)')
-    parser.add_argument('--max-images', type=int, default=50,
-                       help='Maximum number of images to process (default: 50)')
+    parser.add_argument('--max-images', type=int, default=200,
+                       help='Maximum number of images to process (default: 200)')
     parser.add_argument('--single-image', type=str,
                        help='Process a single image file instead of dataset')
     parser.add_argument('--threads', type=int, default=4,
