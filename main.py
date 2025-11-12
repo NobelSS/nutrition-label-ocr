@@ -80,6 +80,10 @@ def run_pipeline(image_path: str, ocr_engine: str = 'paddleocr', draw_boxes: boo
         
         if corners is not None:
             image = scanner.rectify_label()
+
+        if image is None:
+            print("No label detected or rectified in NO_OBJECT_DETECTION mode. Skipping image.")
+            return None
         
         image = deskew(image, show_result=False, debug=False)
         image = preprocess(image, save_result=False, save_path=f'debug/preprocess/{os.path.splitext(os.path.basename(image_path))[0]}.png', debug=False)

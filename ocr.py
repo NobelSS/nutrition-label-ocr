@@ -201,7 +201,7 @@ def use_svtrv2_mobile_with_paddleocr_detection(image: np.ndarray):
     # Initialize SVTR recognizer
     recognizer = OpenRecognizer(
         backend='onnx',
-        onnx_model_path='./model/rec/repsvtr_ch.onnx',
+        # onnx_model_path='./model/rec/repsvtr_ch.onnx',
         
     )
     
@@ -265,7 +265,7 @@ def use_svtrv2_mobile_with_easyocr_detection(image: np.ndarray):
     # Initialize SVTR recognizer
     recognizer = OpenRecognizer(
         backend='onnx',
-        onnx_model_path='./model/rec/repsvtr_ch.onnx'
+        # onnx_model_path='./model/rec/repsvtr_ch.onnx'
     )
     
     texts = []
@@ -320,7 +320,8 @@ def use_svtrv2_mobile(image: np.ndarray, draw_boxes: bool = False):
     Returns:
         Extracted text as string
     """
-    ocr = OpenOCR(backend='onnx', device='cpu', onnx_rec_model_path='./model/rec/repsvtr_ch.onnx')
+    # ocr = OpenOCR(backend='onnx', device='cpu', onnx_rec_model_path='./model/rec/repsvtr_ch.onnx')
+    ocr = OpenOCR(backend='onnx', device='cpu')
     result = ocr(img_numpy=image)
     
     texts = []
