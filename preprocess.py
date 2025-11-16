@@ -12,10 +12,12 @@ def preprocess(image: np.ndarray, save_result: bool = True, save_path: str = "ou
 
     image = (image * 255).astype(np.uint8) if image.max() <= 1.0 else image # Transform for OpenCV format
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
-    thresh = binarize(gray)
     
-    sharpened_kernel = sharpen_kernel(gray)
-    sharpened_mask = sharpen_mask(gray)
+    denoised = denoise(gray)
+    thresh = binarize(denoised)
+    
+    sharpened_kernel = sharpen_kernel(denoised)
+    sharpened_mask = sharpen_mask(denoised)
         
     thresh_sharpened_mask = binarize(sharpened_mask)
     thresh_sharpened_kernel = binarize(sharpened_kernel)
@@ -95,7 +97,8 @@ def binarize(image: np.ndarray):
 
 def denoise(image: np.ndarray):
     # return cv2.fastNlMeansDenoising(image, h=5)
-    return cv2.bilateralFilter(image, 9, 75, 75)
+    # return cv2.bilateralFilter(image, 9, 75, 75)
+    return cv2.GaussianBlur(image, (3, 3), 0)
 
 def adaptive_threshold(image: np.ndarray):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image

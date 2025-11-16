@@ -39,13 +39,20 @@ class NutritionLabelScanner:
         enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
         return enhanced
     
+    def enhance_contrast_grayscale(self, image):
+        """Enhance contrast on grayscale image using CLAHE"""
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+        enhanced = clahe.apply(image)  # Directly apply to grayscale
+        return enhanced
+    
     def preprocess_for_labels(self, image, blur_kernel=3, canny_low=30, canny_high=100):
         """Preprocess specifically for nutrition labels with better edge detection"""
         resized = self.resize_image(image)
-        gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-        enhanced = self.enhance_contrast(gray)
-        # filtered = cv2.bilateralFilter(gray, 9, 75, 75)
-        blurred = cv2.GaussianBlur(enhanced, (blur_kernel, blur_kernel), 0)
+        enhanced = self.enhance_contrast(resized)
+        gray = cv2.cvtColor(enhanced, cv2.COLOR_BGR2GRAY)
+        # enhanced = self.enhance_contrast_grayscale(gray)
+        filtered = cv2.bilateralFilter(gray, 9, 75, 75)
+        blurred = cv2.GaussianBlur(filtered, (blur_kernel, blur_kernel), 0)
         edges = cv2.Canny(blurred, canny_low, canny_high)
         
         # Apply morphological operations to connect broken edges
