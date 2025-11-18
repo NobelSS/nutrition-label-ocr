@@ -13,11 +13,12 @@ def preprocess(image: np.ndarray, save_result: bool = True, save_path: str = "ou
     image = (image * 255).astype(np.uint8) if image.max() <= 1.0 else image # Transform for OpenCV format
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
     
-    denoised = denoise(gray)
-    thresh = binarize(denoised)
+    # denoised = denoise(gray)
+    # thresh = binarize(denoised)
+    thresh = binarize(gray)
     
-    sharpened_kernel = sharpen_kernel(denoised)
-    sharpened_mask = sharpen_mask(denoised)
+    sharpened_kernel = sharpen_kernel(gray)
+    sharpened_mask = sharpen_mask(gray)
         
     thresh_sharpened_mask = binarize(sharpened_mask)
     thresh_sharpened_kernel = binarize(sharpened_kernel)
